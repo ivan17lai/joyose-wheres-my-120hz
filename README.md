@@ -9,40 +9,28 @@ worked out how HyperOS decides what to do when an app comes to the foreground.
 
 ```mermaid
 flowchart LR
-    subgraph install["When an APK is installed or updated"]
-        direction LR
-        A[Qualcomm workload classifier<br/>scans the APK, feeds 22 features to a model] --> B{Score ≥ 0.5?}
-        B -->|Yes| C[Recorded as a game]
-        B -->|No| D[Recorded as an app]
-    end
+    apk["APK installed or updated"] --> wlc["Qualcomm workload classifier<br/>reads the APK structure, feeds 22 features to a model<br/>score ≥ 0.5 is labelled a game"]
+    model[("wlc_model.tflite<br/>small neural network")] -.-> wlc
+    wlc --> label[("Classification<br/>game / app")]
 
-    subgraph foreground["When the app comes to the foreground"]
-        direction LR
-        F[Joyose checks whether it is a game] --> G{Already on a game list?<br/>cloud list, Joyose's saved list,<br/>Battery and performance's list}
-        G -->|Yes| K[Game mode<br/>log: gameStatus: 1]
-        G -->|No| H{Cloud switch<br/>game_identify on?}
-        H -->|No| L[Regular app]
-        H -->|Yes| I[Ask the Qualcomm classifier<br/>log: GID: PKG ... IG ?]
-        I -->|Game| J[Save to Joyose's game list,<br/>notify Battery and performance]
-        J --> K
-        I -->|App| L
-    end
+    fg["App comes to the foreground"] --> listed{"Already on<br/>Joyose's game list?"}
+    listed -->|No| identify{"Cloud switch<br/>game_identify on?"}
+    identify -->|Yes| ask{"Classifier says game?<br/>log: GID: PKG … IG ?"}
+    label -.-> ask
+    ask -->|Yes| save["Save to the game list<br/>survives app updates<br/>and reboots"]
+    listed -->|Yes| gameMode
+    save --> gameMode["Game mode<br/>log: gameStatus: 1"]
+    gameMode --> cap["Battery and performance<br/>games without their own<br/>rule get 60 Hz"]
+    identify -->|No| normal["Regular app"]
+    ask -->|No| normal
+    normal --> free["User setting<br/>up to 120 Hz"]
 
-    C -.-> I
-    D -.-> I
-    K --> M[Battery and performance:<br/>games without their own rule → 60 Hz]
-    L --> N[User setting, up to 120 Hz]
-
-    classDef qualcomm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
-    classDef joyose fill:#ffedd5,stroke:#ea580c,color:#7c2d12
-    classDef decision fill:#f3f4f6,stroke:#6b7280,color:#111827
-    classDef game fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
-    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
-    class A,I qualcomm
-    class F,J joyose
-    class B,G,H decision
-    class C,K,M game
-    class D,L,N ok
+    classDef check fill:#fff0c2,stroke:#c78b19,color:#302710
+    classDef bad fill:#fbdcd8,stroke:#c0503f,color:#3d1610
+    classDef good fill:#d9f2df,stroke:#40975a,color:#153920
+    class listed,identify,ask check
+    class save,gameMode,cap bad
+    class normal,free good
 ```
 
 The key is the **game list** box. Once an app is classified as a game, the
@@ -199,5 +187,3 @@ tuning too.
   with your model, HyperOS version and logs.
 - This repository only describes behaviour and ships its own tools. It does not
   contain Xiaomi's or Qualcomm's code or model files.
-#   w h o - i s - j o y o s e  
- 

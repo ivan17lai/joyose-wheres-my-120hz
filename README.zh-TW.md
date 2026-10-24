@@ -6,40 +6,28 @@
 
 ```mermaid
 flowchart LR
-    subgraph install["安裝或更新 APK 時"]
-        direction LR
-        A[Qualcomm 工作負載分類器<br/>掃描 APK，22 個特徵送進模型] --> B{分數 ≥ 0.5？}
-        B -->|是| C[記為遊戲]
-        B -->|否| D[記為一般 App]
-    end
+    apk["安裝或更新 APK"] --> wlc["Qualcomm 工作負載分類器<br/>讀取 APK 結構，22 個特徵送進模型<br/>分數 ≥ 0.5 記為遊戲"]
+    model[("wlc_model.tflite<br/>小型神經網路")] -.-> wlc
+    wlc --> label[("分類結果<br/>遊戲 / 一般 App")]
 
-    subgraph foreground["App 切到前景時"]
-        direction LR
-        F[Joyose 判斷是不是遊戲] --> G{已經在遊戲名單裡？<br/>雲端名單、Joyose 存的名單、<br/>電量與性能的名單}
-        G -->|是| K[遊戲模式<br/>log：gameStatus: 1]
-        G -->|否| H{雲端開關<br/>game_identify 開啟？}
-        H -->|否| L[一般 App]
-        H -->|是| I[問 Qualcomm 分類器<br/>log：GID: PKG ... IG ?]
-        I -->|遊戲| J[寫進 Joyose 的遊戲名單，<br/>通知電量與性能]
-        J --> K
-        I -->|一般 App| L
-    end
+    fg["App 切到前景"] --> listed{"已在 Joyose<br/>遊戲名單裡？"}
+    listed -->|否| identify{"雲端開關<br/>game_identify 開啟？"}
+    identify -->|是| ask{"分類器說是遊戲？<br/>log：GID: PKG … IG ?"}
+    label -.-> ask
+    ask -->|是| save["寫入遊戲名單<br/>更新 App、重開機<br/>都不會清除"]
+    listed -->|是| gameMode
+    save --> gameMode["遊戲模式<br/>log：gameStatus: 1"]
+    gameMode --> cap["電量與性能<br/>沒有個別規則的遊戲<br/>一律 60 Hz"]
+    identify -->|否| normal["一般 App"]
+    ask -->|否| normal
+    normal --> free["依使用者設定<br/>最高 120 Hz"]
 
-    C -.-> I
-    D -.-> I
-    K --> M[電量與性能：<br/>沒有個別規則的遊戲 → 60 Hz]
-    L --> N[依使用者設定，最高 120 Hz]
-
-    classDef qualcomm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
-    classDef joyose fill:#ffedd5,stroke:#ea580c,color:#7c2d12
-    classDef decision fill:#f3f4f6,stroke:#6b7280,color:#111827
-    classDef game fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
-    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
-    class A,I qualcomm
-    class F,J joyose
-    class B,G,H decision
-    class C,K,M game
-    class D,L,N ok
+    classDef check fill:#fff0c2,stroke:#c78b19,color:#302710
+    classDef bad fill:#fbdcd8,stroke:#c0503f,color:#3d1610
+    classDef good fill:#d9f2df,stroke:#40975a,color:#153920
+    class listed,identify,ask check
+    class save,gameMode,cap bad
+    class normal,free good
 ```
 
 
