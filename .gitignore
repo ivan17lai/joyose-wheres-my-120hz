@@ -1,0 +1,3 @@
+*.tflite
+*.apk
+__pycache__/
