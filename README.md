@@ -1,4 +1,4 @@
-# Who is Joyose?
+# Joyose, where's my 120 Hz?
 
 *[繁體中文](README.zh-TW.md)*
 
